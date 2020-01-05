@@ -23,6 +23,9 @@ Button green_btn(9), red_btn(8);
 int state = 0;
 
 
+uint16_t serial_r, serial_c;
+
+
 
 // IMPORTANT: To reduce NeoPixel burnout risk, add 1000 uF capacitor across
 // pixel power leads, add 300 - 500 Ohm resistor on first pixel's data input
@@ -74,12 +77,14 @@ void loop() {
   if (state == 16) state =  0;               // Wrap around at 15
   if (state == -1) state = 15;               // Wrap around at -1
 
+/*
   Serial.print("Green: ");
   Serial.print(green_btn.isPressed);
   Serial.print(", Red: ");
   Serial.print(red_btn.isPressed);
   Serial.print(", state: ");
   Serial.println(state);
+*/
 
   // Show button press state on built in LED
   digitalWrite(13, (green_btn.isPressed || red_btn.isPressed)?HIGH:LOW);
@@ -89,7 +94,67 @@ void loop() {
   switch (state) {
     case 15:
       // Serial access
-      strip.clear();
+      if (green_btn.isJustReleased || red_btn.isJustReleased) {
+        // Reset the grid only if the buttons are just pressed
+        strip.clear();
+        strip.show();
+      } else {
+        
+        // Read serial and update grid
+        while (Serial.available() > 0) {
+          
+          int incomingByte = 0; // for incoming serial data
+          incomingByte = Serial.read();
+
+          // Read r char or c char
+          if (incomingByte=='r') {
+            // Wait for Serial to be available
+            while(!Serial.available()){}
+            
+            incomingByte = Serial.read();
+            if (incomingByte > 10) serial_r = (incomingByte - '0') & 0xFF; // offset from char 0
+            else serial_r = (byte) incomingByte;
+            //Serial.print("r = ");
+            //Serial.println(serial_r);
+          }
+          if (incomingByte=='c') {
+            // Wait for Serial to be available
+            while(!Serial.available()){}
+            
+            incomingByte = Serial.read();
+            if (incomingByte > 10) serial_c = (incomingByte - '0') & 0xFF; // offset from char 0
+            else serial_c = (byte) incomingByte;
+            //Serial.print("c = ");
+            //Serial.println(serial_c);
+          }
+
+          if (incomingByte=='#') {
+            uint32_t colour = 0;
+            int tmp = 0;
+
+            // Hold the loop and read 6 bytes
+            for (int i = 0; i < 6; i++) {
+              if (colour > 0) colour *= 16; // multiply by 16 each time
+              
+              // Wait for Serial to be available
+              while (!Serial.available()) { }
+              // Read one char
+              incomingByte = Serial.read();
+              if (incomingByte >= '0' && incomingByte <= '9') tmp = (incomingByte - '0') & 0xFF;
+              else if (incomingByte >= 'A' && incomingByte <= 'F') tmp = 10 + (incomingByte - 'A') & 0xFF; // 'A' is 10
+              else if (incomingByte >= 'a' && incomingByte <= 'f') tmp = 10 + (incomingByte - 'a') & 0xFF; // 'a' is 10
+
+              colour = colour + tmp;
+            }
+            //Serial.print("col = ");
+            //Serial.println(colour, HEX);
+            
+            XY_COLOUR(colour, serial_c, serial_r);
+            strip.show();
+          }
+        }
+      }
+      break;
     case 14:
       c1 = Wheel((millis()/5   ) & 255);
       c2 = Wheel((millis()/5+10) & 255);
