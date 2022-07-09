@@ -107,7 +107,7 @@ void loop() {
           incomingByte = Serial.read();
 
           // Read r char or c char
-          if (incomingByte=='r') {
+          if (incomingByte=='r' || incomingByte=='R') {
             // Wait for Serial to be available
             while(!Serial.available()){}
             
@@ -117,7 +117,7 @@ void loop() {
             //Serial.print("r = ");
             //Serial.println(serial_r);
           }
-          if (incomingByte=='c') {
+          if (incomingByte=='c' || incomingByte=='C') {
             // Wait for Serial to be available
             while(!Serial.available()){}
             
